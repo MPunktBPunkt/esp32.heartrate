@@ -131,7 +131,7 @@ Siehe §6. Kurz:
 - Keine medizinischen Alarme / Diagnosen
 - Keine Cloud
 - Keine automatische Verbindung nach Boot (außer User schaltet Auto-connect bewusst ein — dann erst ab v0.2)
-- Kein BLE-Peripheral-Modus
+- Kein BLE-Peripheral-Modus (**aufgehoben ab v0.3** — siehe `PFLICHTENHEFT-v0.3-RELAY.md`)
 - Keine große Datenbank auf dem ESP
 
 ---
