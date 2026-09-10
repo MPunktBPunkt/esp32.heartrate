@@ -1,6 +1,6 @@
 # esp32.heartrate
 
-![Version](https://img.shields.io/badge/version-0.3.0-blue)
+![Version](https://img.shields.io/badge/version-0.3.1-blue)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Build](https://github.com/MPunktBPunkt/esp32.heartrate/actions/workflows/build.yml/badge.svg)](https://github.com/MPunktBPunkt/esp32.heartrate/actions/workflows/build.yml)
 [![Donate](https://img.shields.io/badge/Donate-PayPal-00457C.svg?logo=paypal)](https://www.paypal.com/donate/?business=martin%40bchmnn.de&currency_code=EUR)
@@ -29,10 +29,11 @@ Polar H9 ──BLE Central──▶ ESP32-S3 ──BLE Peripheral──▶ Handy
 Auf dem D1 Mini (`heartrate`) bleibt nur die Central-Rolle — Relay ist wegkompiliert.
 ---
 
-## Features v0.3.0
+## Features v0.3.1
 
 - **BLE Central (NimBLE):** Scan, Connect, Disconnect, Remember / Forget
 - **HR-Relay (nur ESP32-S3):** GATT-Peripheral `0x180D`, treue Weiterleitung von HR/RR an bis zu 2 Verbraucher — Default aus, persistent
+- **Config→Hub:** nach Speichern im Web-UI sofortiger Heartbeat (Gerätename ohne Warten auf Intervall)
 - **Heart Rate Measurement:** BPM + RR-Intervalle, Battery, RSSI
 - **Session-Reconnect** (bis ca. 5 min nach Linkverlust) + konfigurierbarer Idle-Disconnect (ausgesetzt solange Relay-Verbraucher abonniert)
 - **Modi:** Rest / Alltag / Training / Recovery inkl. Soft-Auto und Baseline-Guide

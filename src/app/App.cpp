@@ -644,6 +644,7 @@ void App::registerRoutes() {
         }
         config.save();
         NetUtil::configureNtp(config);
+        if (config.enableHub) hub.sendNow();
         JsonDocument doc;
         doc["ok"] = true;
         config.toJson(doc["config"].to<JsonObject>());
