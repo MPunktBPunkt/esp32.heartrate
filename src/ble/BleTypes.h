@@ -80,3 +80,8 @@ struct HrSample {
 };
 
 bool parseHeartRateMeasurement(const uint8_t* data, size_t len, HrSample& out);
+
+/** Encode sample into HRM wire format. Returns bytes written, 0 on failure.
+ *  Optional truncatedOut is set true when RR values were dropped for MTU budget. */
+size_t buildHeartRateMeasurement(const HrSample& s, uint8_t* out, size_t cap,
+                                 bool* truncatedOut = nullptr);
