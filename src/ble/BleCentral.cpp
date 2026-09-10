@@ -46,7 +46,13 @@ void BleCentral::begin(ConfigStore* cfg, HistoryStore* history) {
     cfg_ = cfg;
     history_ = history;
     g_ble = this;
+#if HR_RELAY
+    String gapName = (cfg_ && cfg_->relayName.length()) ? cfg_->relayName
+                                                       : ConfigStore::defaultRelayName();
+    NimBLEDevice::init(gapName.c_str());
+#else
     NimBLEDevice::init("");
+#endif
     NimBLEDevice::setPower(ESP_PWR_LVL_P9);
     NimBLEDevice::setSecurityAuth(false, false, false);
     setState(BleState::Idle);
@@ -508,6 +514,7 @@ void BleCentral::handleSessionReconnect() {
 }
 
 void BleCentral::handleIdleDisconnect() {
+    if (relayHold_) return;
     if (!cfg_ || cfg_->idleDisconnectS == 0) return;
     if (!sessionActive_ || state_ != BleState::Ready) return;
     if (!hasSample_) return;

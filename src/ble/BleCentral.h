@@ -44,6 +44,10 @@ public:
     void appendStatusJson(JsonObject obj) const;
     void appendIoValues(JsonObject ios) const;
 
+    /** Suspend idle-disconnect while a relay consumer is subscribed. */
+    void setRelayHold(bool hold) { relayHold_ = hold; }
+    bool relayHold() const { return relayHold_; }
+
     // called from NimBLE callbacks
     void onScanResult(NimBLEAdvertisedDevice* advertisedDevice);
     void onNotify(NimBLERemoteCharacteristic* chr, uint8_t* data, size_t len);
@@ -81,6 +85,7 @@ private:
     volatile bool connectBusy_ = false;
     bool connectIsReconnect_ = false;
     volatile bool sampleDirty_ = false;
+    bool relayHold_ = false;
     uint8_t reconnectTries_ = 0;
     uint8_t peerAddrType_ = BLE_ADDR_PUBLIC;
 
