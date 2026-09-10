@@ -1,6 +1,6 @@
 # esp32.heartrate
 
-![Version](https://img.shields.io/badge/version-0.2.16-blue)
+![Version](https://img.shields.io/badge/version-0.3.0-blue)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Build](https://github.com/MPunktBPunkt/esp32.heartrate/actions/workflows/build.yml/badge.svg)](https://github.com/MPunktBPunkt/esp32.heartrate/actions/workflows/build.yml)
 [![Donate](https://img.shields.io/badge/Donate-PayPal-00457C.svg?logo=paypal)](https://www.paypal.com/donate/?business=martin%40bchmnn.de&currency_code=EUR)
@@ -21,25 +21,27 @@
 | Hub-Telemetrie + Session-Export | Cloud-Sync ohne Hub |
 
 ```
-Polar H9 ──BLE──▶ ESP32 ──WebUI/SSE──▶ Browser
-                    │
-                    └──Heartbeat/Export──▶ ESP-Hub / ioBroker
+Polar H9 ──BLE Central──▶ ESP32-S3 ──BLE Peripheral──▶ Handy / Radcomputer (Relay, bis 2)
+                             │
+                             └──WiFi──▶ WebUI/SSE + ESP-Hub
 ```
 
+Auf dem D1 Mini (`heartrate`) bleibt nur die Central-Rolle — Relay ist wegkompiliert.
 ---
 
-## Features v0.2.16
+## Features v0.3.0
 
 - **BLE Central (NimBLE):** Scan, Connect, Disconnect, Remember / Forget
+- **HR-Relay (nur ESP32-S3):** GATT-Peripheral `0x180D`, treue Weiterleitung von HR/RR an bis zu 2 Verbraucher — Default aus, persistent
 - **Heart Rate Measurement:** BPM + RR-Intervalle, Battery, RSSI
-- **Session-Reconnect** (bis ca. 5 min nach Linkverlust) + konfigurierbarer Idle-Disconnect
+- **Session-Reconnect** (bis ca. 5 min nach Linkverlust) + konfigurierbarer Idle-Disconnect (ausgesetzt solange Relay-Verbraucher abonniert)
 - **Modi:** Rest / Alltag / Training / Recovery inkl. Soft-Auto und Baseline-Guide
 - **RR-Pipeline:** `rrRaw` (1/1024 s), Beat-Timeline, Quality-Labels (Valid / Suspect / Artifact / Invalid), Gap-Handling
 - **Continuity-KPIs:** Lücken, Reconnects, RSSI min/avg/max, Continuity-%
 - **LittleFS-Archiv:** bis 64 Sessions, verdichtete Serie (~10 s)
 - **Export:** JSON / CSV lokal + **An Hub senden**
 - **Scan-UI:** standardmäßig nur HR-relevante Geräte (Toggle „alle BLE-Geräte“)
-- **Web-UI:** Live-Charts (BPM, RR, Beat-to-Beat, Battery, RSSI), SSE
+- **Web-UI:** Live-Charts (BPM, RR, Beat-to-Beat, Battery, RSSI), SSE, Relay-Badge
 - **ESP-Hub:** Heartbeat mit `fwType: heartrate`, Web-OTA
 
 ---
@@ -48,8 +50,8 @@ Polar H9 ──BLE──▶ ESP32 ──WebUI/SSE──▶ Browser
 
 | Board | PlatformIO-Env | Hinweis |
 |-------|----------------|---------|
-| ESP32 Mini D1 | `heartrate` | getestet |
-| ESP32-S3 | `heartrate-s3` | getestet |
+| ESP32 Mini D1 | `heartrate` | getestet — kein Relay |
+| ESP32-S3 | `heartrate-s3` | getestet — inkl. HR-Relay |
 
 Getestet u. a. mit **Polar H9** (BLE Heart Rate Service `0x180D`). Sensor-Contact-Flags liefert der H9 typischerweise nicht — die UI zeigt dann `n/a` und leitet `strapFit` ab.
 
@@ -97,6 +99,8 @@ Auszug der IOs / Metriken:
 | `session_continuity_pct` | Anteil ununterbrochener Session-Zeit |
 | `session_effective_gap_s` | Summe relevanter Lücken |
 | `strap_fit` / `strapFit` | abgeleitete Gurt-Passung |
+| `relay_enabled` | Relay an/aus (0/1, S3) |
+| `relay_clients` | verbundene Relay-Verbraucher |
 | BPM, Battery, RSSI | Live-Werte im Heartbeat / Status |
 
 Session-Export vom Gerät → Hub:
@@ -126,6 +130,7 @@ Im Hub: States `devices.<MAC>.lastSessionExport` / `lastSessionExportAt`.
 | `GET /api/sessions` · `POST …/clear` | Archiv |
 | `GET /api/session/export` · `.csv` · `POST …/send` | Export |
 | `GET/POST /api/config/get` `/save` | Config |
+| `GET/POST /api/relay` | HR-Relay Status / Schalten (S3; Mini → 501) |
 | `POST /api/system/restart` | Neustart |
 | `/events` | SSE (Live-Updates) |
 
@@ -148,6 +153,7 @@ pio run -e heartrate-s3
 
 - [docs/PFLICHTENHEFT.md](docs/PFLICHTENHEFT.md) — Zielbild & Anforderungen
 - [docs/PFLICHTENHEFT-v0.2.md](docs/PFLICHTENHEFT-v0.2.md) — RR-/Quality-Phase
+- [docs/PFLICHTENHEFT-v0.3-RELAY.md](docs/PFLICHTENHEFT-v0.3-RELAY.md) — HR-Relay (BLE-Peripheral)
 
 ---
 

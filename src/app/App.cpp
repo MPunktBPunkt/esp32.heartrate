@@ -27,6 +27,9 @@ void App::begin() {
     setupWifi();
 
     ble.begin(&config, &history);
+#if HR_RELAY
+    relay.begin(&config, &ble);
+#endif
 
     // Mount/prepare persisted archives after BLE init (reduces RAM pressure on connect)
     archive.begin();
@@ -207,6 +210,16 @@ void App::buildStatusJson(JsonDocument& doc) {
         f["unit"] = "";
     }
 
+#if HR_RELAY
+    relay.appendStatusJson(doc["relay"].to<JsonObject>());
+    relay.appendIoValues(ios);
+#else
+    {
+        JsonObject r = doc["relay"].to<JsonObject>();
+        r["supported"] = false;
+    }
+#endif
+
 }
 
 void App::buildHeartbeat(JsonDocument& doc) {
@@ -269,6 +282,10 @@ void App::buildHeartbeat(JsonDocument& doc) {
         f["value"] = fit;
         f["unit"] = "";
     }
+
+#if HR_RELAY
+    relay.appendIoValues(ios);
+#endif
 
 }
 
@@ -640,11 +657,61 @@ void App::registerRoutes() {
         doc["ok"] = true;
         NetUtil::sendJson(server, 200, doc);
     });
+
+    server.on("/api/relay", HTTP_GET, [this]() {
+#if HR_RELAY
+        JsonDocument doc;
+        relay.appendStatusJson(doc.to<JsonObject>());
+        NetUtil::sendJson(server, 200, doc);
+#else
+        NetUtil::sendError(server, 501, "relay unsupported");
+#endif
+    });
+
+    server.on("/api/relay", HTTP_POST, [this]() {
+#if HR_RELAY
+        JsonDocument body;
+        if (!NetUtil::readJsonBody(server, body)) return;
+        bool restartRequired = false;
+        if (!body["name"].isNull()) {
+            String newName = body["name"].as<String>();
+            if (newName != config.relayName) {
+                config.relayName = newName;
+                restartRequired = true;
+            }
+        }
+        if (!body["maxClients"].isNull()) {
+            uint8_t mc = body["maxClients"].as<uint8_t>();
+            if (mc < 1) mc = 1;
+            if (mc > HR_RELAY_MAX_CLIENTS) mc = HR_RELAY_MAX_CLIENTS;
+            config.relayMaxClients = mc;
+        }
+        if (!body["enabled"].isNull()) {
+            bool en = body["enabled"].as<bool>();
+            relay.setEnabled(en);
+            config.relayEnabled = en;
+        }
+        if (!body["battery"].isNull()) {
+            config.relayBattery = body["battery"].as<bool>();
+        }
+        config.save();
+        JsonDocument doc;
+        relay.appendStatusJson(doc.to<JsonObject>());
+        doc["ok"] = true;
+        if (restartRequired) doc["restartRequired"] = true;
+        NetUtil::sendJson(server, 200, doc);
+#else
+        NetUtil::sendError(server, 501, "relay unsupported");
+#endif
+    });
 }
 
 void App::loop() {
     server.handleClient();
     ble.loop();
+#if HR_RELAY
+    relay.loop();
+#endif
     hub.loop();
 
     bool sess = ble.sessionActive();
@@ -699,6 +766,9 @@ void App::loop() {
         beats.onPacket(ble.lastSample());
         session.onSample(ble.lastSample(), beats);
         if (session.active()) series.onSample(ble.lastSample().heartRate, session.durationMs());
+#if HR_RELAY
+        relay.onSample(ble.lastSample());
+#endif
     }
 
     unsigned long sseInterval = (ble.state() == BleState::Ready) ? 1000UL : 3000UL;

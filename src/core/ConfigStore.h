@@ -33,6 +33,12 @@ public:
     String ntpServer = NTP_SERVER_DEFAULT;
     String tz = TZ_DEFAULT;
 
+    // HR-Relay (S3); persisted on all boards so configs stay interchangeable
+    bool relayEnabled = false;
+    String relayName;  // empty → HR-Relay-XXXXXX at runtime
+    uint8_t relayMaxClients = HR_RELAY_MAX_CLIENTS;
+    bool relayBattery = true;
+
     void begin();
     void load();
     void save();
@@ -42,7 +48,9 @@ public:
     bool fromJson(JsonVariantConst obj);
     /** Effective zone basis given current profile. */
     bool zonesUseHrr() const;
+    /** Default GAP name from MAC suffix (last 3 bytes / 6 hex chars). */
+    static String defaultRelayName();
 
 private:
-    static constexpr uint8_t kConfigVersion = 5;
+    static constexpr uint8_t kConfigVersion = 6;
 };

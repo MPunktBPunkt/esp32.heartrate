@@ -11,6 +11,9 @@
 #include "core/SessionArchive.h"
 #include "core/SessionSeries.h"
 #include "ble/BleCentral.h"
+#if HR_RELAY
+#include "ble/HrServer.h"
+#endif
 
 class App {
 public:
@@ -20,6 +23,9 @@ public:
     HistoryStore history;
     HubClient hub;
     BleCentral ble;
+#if HR_RELAY
+    HrServer relay;
+#endif
     BeatTimeline beats;
     SessionStats session;
     SessionArchive archive;
