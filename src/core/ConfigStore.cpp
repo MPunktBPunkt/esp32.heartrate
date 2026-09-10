@@ -1,7 +1,14 @@
 #include "ConfigStore.h"
+#include "NetUtil.h"
 #include <Preferences.h>
 
 static Preferences prefs;
+
+String ConfigStore::defaultRelayName() {
+    String mac = NetUtil::macNoColon();
+    String suffix = mac.length() >= 6 ? mac.substring(mac.length() - 6) : mac;
+    return String("HR-Relay-") + suffix;
+}
 
 void ConfigStore::applyDefaults() {
     deviceName = DEVICE_NAME_DEFAULT;
@@ -24,6 +31,10 @@ void ConfigStore::applyDefaults() {
     enableNtp = true;
     ntpServer = NTP_SERVER_DEFAULT;
     tz = TZ_DEFAULT;
+    relayEnabled = false;
+    relayName = "";
+    relayMaxClients = HR_RELAY_MAX_CLIENTS;
+    relayBattery = true;
 }
 
 void ConfigStore::begin() {
@@ -61,8 +72,15 @@ void ConfigStore::load() {
     enableNtp = prefs.getBool("en_ntp", enableNtp);
     ntpServer = prefs.getString("ntp", ntpServer);
     tz = prefs.getString("tz", tz);
+    // v6 relay fields — missing keys keep defaults (migrate without factory reset)
+    relayEnabled = prefs.getBool("rel_en", false);
+    relayName = prefs.getString("rel_name", "");
+    relayMaxClients = prefs.getUChar("rel_maxc", HR_RELAY_MAX_CLIENTS);
+    relayBattery = prefs.getBool("rel_bat", true);
     prefs.end();
     if (zoneMode != "hrmax" && zoneMode != "hrr" && zoneMode != "auto") zoneMode = "auto";
+    if (relayMaxClients < 1) relayMaxClients = 1;
+    if (relayMaxClients > HR_RELAY_MAX_CLIENTS) relayMaxClients = HR_RELAY_MAX_CLIENTS;
 }
 
 void ConfigStore::save() {
@@ -91,6 +109,10 @@ void ConfigStore::save() {
     prefs.putBool("en_ntp", enableNtp);
     prefs.putString("ntp", ntpServer);
     prefs.putString("tz", tz);
+    prefs.putBool("rel_en", relayEnabled);
+    prefs.putString("rel_name", relayName);
+    prefs.putUChar("rel_maxc", relayMaxClients);
+    prefs.putBool("rel_bat", relayBattery);
     prefs.end();
 }
 
@@ -126,6 +148,10 @@ void ConfigStore::toJson(JsonObject obj) const {
     obj["enableNtp"] = enableNtp;
     obj["ntpServer"] = ntpServer;
     obj["tz"] = tz;
+    obj["relayEnabled"] = relayEnabled;
+    obj["relayName"] = relayName;
+    obj["relayMaxClients"] = relayMaxClients;
+    obj["relayBattery"] = relayBattery;
     obj["board"] = HR_BOARD_ID;
     obj["boardLabel"] = HR_BOARD_LABEL;
 }
@@ -165,6 +191,10 @@ bool ConfigStore::fromJson(JsonVariantConst obj) {
     if (!obj["enableNtp"].isNull()) enableNtp = obj["enableNtp"].as<bool>();
     ntpServer = jsonString(obj["ntpServer"], ntpServer);
     tz = jsonString(obj["tz"], tz);
+    if (!obj["relayEnabled"].isNull()) relayEnabled = obj["relayEnabled"].as<bool>();
+    if (!obj["relayName"].isNull()) relayName = obj["relayName"].as<String>();
+    if (!obj["relayMaxClients"].isNull()) relayMaxClients = obj["relayMaxClients"].as<uint8_t>();
+    if (!obj["relayBattery"].isNull()) relayBattery = obj["relayBattery"].as<bool>();
     if (ntpServer.length() == 0) ntpServer = NTP_SERVER_DEFAULT;
     if (tz.length() == 0) tz = TZ_DEFAULT;
     if (heartbeatIntervalS < 5) heartbeatIntervalS = 5;
@@ -172,5 +202,7 @@ bool ConfigStore::fromJson(JsonVariantConst obj) {
     if (userWeightKg > 250) userWeightKg = 250;
     if (restingHr > 0 && restingHr < 30) restingHr = 30;
     if (restingHr > 120) restingHr = 120;
+    if (relayMaxClients < 1) relayMaxClients = 1;
+    if (relayMaxClients > HR_RELAY_MAX_CLIENTS) relayMaxClients = HR_RELAY_MAX_CLIENTS;
     return true;
 }

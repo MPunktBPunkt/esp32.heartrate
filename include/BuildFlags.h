@@ -1,7 +1,17 @@
 #pragma once
 
 #ifndef FW_VERSION
-#define FW_VERSION "0.2.16"
+#define FW_VERSION "0.3.0"
+#endif
+
+#ifndef HR_RELAY
+#define HR_RELAY 0
+#endif
+#ifndef HR_RELAY_STALE_S
+#define HR_RELAY_STALE_S 10
+#endif
+#ifndef HR_RELAY_MAX_CLIENTS
+#define HR_RELAY_MAX_CLIENTS 2
 #endif
 
 #ifndef DEVICE_NAME_DEFAULT
