@@ -80,6 +80,9 @@ label{display:block;color:var(--muted);font-size:11px;margin:10px 0 4px;text-tra
 .state.ok{color:var(--ok);border-color:rgba(52,211,153,.4)}
 .state.run{color:var(--accent2);border-color:rgba(225,29,72,.4)}
 .state.bad{color:var(--bad);border-color:rgba(248,113,113,.4)}
+.chip.relay-on{color:var(--ok);border-color:rgba(52,211,153,.45)}
+.chip.relay-adv{color:var(--muted);border-color:var(--line)}
+.chip.relay-off{opacity:.35}
 table{width:100%;border-collapse:collapse;font-size:12px}
 th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
 th{color:var(--muted);font-weight:500;text-transform:uppercase;font-size:10px;letter-spacing:.06em}
@@ -98,6 +101,7 @@ th{color:var(--muted);font-weight:500;text-transform:uppercase;font-size:10px;le
       <span class="chip" id="h-board">-</span>
       <span class="chip"><b id="h-name">-</b></span>
       <span class="chip" id="h-state">IDLE</span>
+      <span class="chip" id="h-relay" style="display:none">RELAY</span>
       <span class="chip" id="h-link" title="BLE Reichweite">Reichweite —</span>
       <span class="chip" id="h-time">NTP …</span>
       <div class="live">
@@ -239,6 +243,22 @@ th{color:var(--muted);font-weight:500;text-transform:uppercase;font-size:10px;le
         <thead><tr><th>Name</th><th>MAC</th><th>RSSI</th><th>HR</th><th></th></tr></thead>
         <tbody id="dev-rows"></tbody>
       </table>
+    </div>
+    <div class="panel" id="relay-panel" style="display:none">
+      <h3>HR-Relay <span class="cap" id="relay-cap">Peripheral</span></h3>
+      <div class="warn" id="relay-warn">Mit aktivem Relay hält der ESP den Gurt. Idle-Disconnect greift nicht, solange ein Verbraucher 0x2A37 abonniert. Scan parallel ist erlaubt, kann aber Notify-Jitter verursachen.</div>
+      <div class="row">
+        <div><label>Relay</label>
+          <select id="relay-en"><option value="0">aus</option><option value="1">an</option></select>
+        </div>
+        <div><label>GAP-Name (Neustart nötig)</label><input id="relay-name" placeholder="HR-Relay-XXXXXX"></div>
+        <div><label>Max Clients (1–2)</label><input id="relay-max" type="number" min="1" max="2" value="2"></div>
+      </div>
+      <p class="meta" id="relay-stats" style="margin-top:8px">—</p>
+      <p class="meta" id="relay-hint" style="margin-top:4px;color:var(--warn);display:none">Namensänderung gespeichert — Neustart nötig, damit der GAP-Name greift.</p>
+      <div class="actions">
+        <button class="btn btn-a" onclick="saveRelay()">Relay speichern</button>
+      </div>
     </div>
   </div>
 
@@ -471,6 +491,17 @@ function applyStatus(d){
     if(b.reconnectRemainS!=null) st+=' '+b.reconnectRemainS+'s';
   }
   document.getElementById('h-state').textContent=st;
+  const rel=d.relay||{};
+  const relEl=document.getElementById('h-relay');
+  if(relEl){
+    if(rel.supported){
+      relEl.style.display='inline-flex';
+      relEl.classList.remove('relay-on','relay-adv','relay-off');
+      if(!rel.enabled){ relEl.textContent='RELAY'; relEl.classList.add('relay-off'); }
+      else if(rel.clients>0){ relEl.textContent='RELAY ●'; relEl.classList.add('relay-on'); }
+      else { relEl.textContent='RELAY ○'; relEl.classList.add('relay-adv'); }
+    } else relEl.style.display='none';
+  }
   const link=b.link||{};
   const linkEl=document.getElementById('h-link');
   if(linkEl){
@@ -730,6 +761,25 @@ function isLikelyHrDevice(x, remMac){
 }
 async function loadDevices(){
   const d=await jget('/api/ble/devices');
+  const st=await jget('/api/status');
+  const rel=st.relay||{};
+  const panel=document.getElementById('relay-panel');
+  if(panel){
+    if(rel.supported){
+      panel.style.display='block';
+      document.getElementById('relay-en').value=rel.enabled?'1':'0';
+      document.getElementById('relay-name').value=rel.name||'';
+      document.getElementById('relay-max').value=(rel.maxClients!=null)?rel.maxClients:2;
+      document.getElementById('relay-stats').textContent=
+        'clients '+ (rel.clients||0) +' / sub '+ (rel.subscribed||0) +
+        (rel.full?' · VOLL':'') +
+        (rel.advertising?' · advertising':'') +
+        ' · notify '+ (rel.notifySent||0) +
+        (rel.notifyFailed?(' · fail '+rel.notifyFailed):'') +
+        (rel.truncated?(' · trunc '+rel.truncated):'') +
+        (rel.holdingStrap?' · hold':'');
+    } else panel.style.display='none';
+  }
   document.getElementById('rem-box').innerHTML=d.rememberedMac
     ? ('<b>'+(d.rememberedName||'Sensor')+'</b><br><span class="mono">'+d.rememberedMac+'</span>')
     : 'kein Gerät gespeichert';
@@ -757,6 +807,17 @@ async function loadDevices(){
   });
   tb.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>connectMac(b.dataset.m));
   tb.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>jpost('/api/ble/remember',{mac:b.dataset.rm,name:b.dataset.rn}).then(loadDevices));
+}
+async function saveRelay(){
+  const body={
+    enabled:document.getElementById('relay-en').value==='1',
+    name:document.getElementById('relay-name').value,
+    maxClients:+document.getElementById('relay-max').value
+  };
+  const r=await jpost('/api/relay', body);
+  const hint=document.getElementById('relay-hint');
+  if(hint) hint.style.display=r.restartRequired?'block':'none';
+  loadDevices();
 }
 function scanStart(){jpost('/api/ble/scan/start',{}).then(()=>{document.getElementById('btn-scan').disabled=true; setTimeout(loadDevices,800); const t=setInterval(loadDevices,1500); setTimeout(()=>{clearInterval(t);document.getElementById('btn-scan').disabled=false},12000)})}
 function scanStop(){jpost('/api/ble/scan/stop',{}).then(loadDevices)}
