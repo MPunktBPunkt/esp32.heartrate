@@ -124,9 +124,17 @@ void HrServer::refreshAdvertising() {
     if (!enabled_) return;
     if (full()) {
         if (advertising_) stopAdvertising();
-    } else if (!advertising_) {
-        startAdvertising();
+        return;
     }
+    // NimBLE stops connectable advertising when a peripheral link is accepted.
+    // Our flag can stay true while the radio is already quiet — sync to stack
+    // truth so a free slot (e.g. ergo connected, MyWhoosh still scanning) is
+    // advertised again.
+    if (serverReady_) {
+        NimBLEAdvertising* adv = NimBLEDevice::getAdvertising();
+        if (adv && !adv->isAdvertising()) advertising_ = false;
+    }
+    if (!advertising_) startAdvertising();
 }
 
 void HrServer::updateHold() {

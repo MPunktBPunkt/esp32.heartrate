@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef FW_VERSION
-#define FW_VERSION "0.3.1"
+#define FW_VERSION "0.3.2"
 #endif
 
 #ifndef HR_RELAY
