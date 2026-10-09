@@ -27,6 +27,8 @@ Polar H9 ──BLE Central──▶ ESP32-S3 ──BLE Peripheral──▶ Handy
 ```
 
 Auf dem D1 Mini (`heartrate`) bleibt nur die Central-Rolle — Relay ist wegkompiliert.
+
+Technologie-Audit (Inventar, Sheets, Evidence) lebt im Repo [technology-audit](https://github.com/MPunktBPunkt/technology-audit) unter [`projects/esp32-heartrate/`](https://github.com/MPunktBPunkt/technology-audit/tree/main/projects/esp32-heartrate) — dieses Repo bleibt die Firmware-Quelle und wird nur gelesen.
 ---
 
 ## Features v0.3.1
