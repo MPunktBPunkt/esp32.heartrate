@@ -1,0 +1,53 @@
+name: Technology Audit
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'docs/audit/**'
+      - 'tools/audit/**'
+      - '.github/workflows/audit.yml'
+  pull_request:
+    paths:
+      - 'docs/audit/**'
+      - 'tools/audit/**'
+      - '.github/workflows/audit.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate audit docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate structure and sheets
+        run: bash tools/audit/audit_validate.sh
+
+  scan:
+    name: Scan this repo (signals)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Run signal scan
+        run: |
+          bash tools/audit/audit_scan.sh "$GITHUB_WORKSPACE" scan-output.json
+          test -s scan-output.json
+
+      - name: Upload scan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-scan-${{ github.run_id }}
+          path: scan-output.json
