@@ -18,6 +18,10 @@ void App::begin() {
     Serial.printf("\n=== esp32.heartrate v%s (%s) ===\n", FW_VERSION, HR_BOARD_LABEL);
     Serial.printf("[BOOT] reset reason %d\n", (int)esp_reset_reason());
 
+    CpuLoad::begin();
+    hwInfo.probe();
+    hwInfo.logToSerial();
+
     config.begin();
     history.begin();
     beats.begin();
@@ -119,7 +123,22 @@ void App::buildStatusJson(JsonDocument& doc) {
     doc["ssid"] = WiFi.SSID();
     doc["uptime"] = NetUtil::fmtUptime(millis() / 1000UL);
     doc["uptimeS"] = millis() / 1000UL;
-    doc["heap"] = ESP.getFreeHeap();
+    doc["heap"] = hwInfo.freeHeap();
+    doc["psram"] = hwInfo.freePsram();
+    doc["psramSize"] = hwInfo.psramSize();
+    doc["sketch"] = hwInfo.freeSketchSpace();
+    doc["sketchUsed"] = hwInfo.sketchSize();
+    doc["hwSummary"] = hwInfo.summaryLine();
+    if (hwInfo.moduleGuess()[0]) doc["module"] = hwInfo.moduleGuess();
+    doc["flashKb"] = hwInfo.flashSizeKb();
+    doc["flashRealMb"] = (int)(hwInfo.flashBytesReal() >> 20);
+    doc["cpu0"] = CpuLoad::core0Percent();
+    if (CpuLoad::core1Percent() >= 0) {
+        doc["cpu1"] = CpuLoad::core1Percent();
+        doc["cpu"] = (CpuLoad::core0Percent() + CpuLoad::core1Percent()) / 2;
+    } else {
+        doc["cpu"] = CpuLoad::core0Percent();
+    }
     doc["hub"] = config.hubHost + ":" + String(config.hubPort);
     doc["interval"] = config.heartbeatIntervalS;
     doc["version"] = FW_VERSION;
@@ -231,8 +250,17 @@ void App::buildHeartbeat(JsonDocument& doc) {
     doc["ip"] = NetUtil::localIp();
     doc["rssi"] = WiFi.RSSI();
     doc["uptime"] = millis() / 1000UL;
-    doc["freeHeap"] = ESP.getFreeHeap();
-    doc["freeSketch"] = ESP.getFreeSketchSpace();
+    doc["freeHeap"] = hwInfo.freeHeap();
+    doc["freeSketch"] = hwInfo.freeSketchSpace();
+    doc["freePsram"] = hwInfo.freePsram();
+    doc["psramSize"] = hwInfo.psramSize();
+    doc["hwSummary"] = hwInfo.summaryLine();
+    doc["module"] = hwInfo.moduleGuess();
+    {
+        const int c0 = CpuLoad::core0Percent();
+        const int c1 = CpuLoad::core1Percent();
+        doc["cpu"] = (c1 >= 0) ? ((c0 + c1) / 2) : c0;
+    }
     doc["fwType"] = "heartrate";
     doc["board"] = HR_BOARD_ID;
     JsonObject ios = doc["ios"].to<JsonObject>();
@@ -379,10 +407,9 @@ void App::handleEvents() {
 }
 
 void App::handleMain() {
-    server.sendHeader(F("Cache-Control"), F("no-store, no-cache, must-revalidate, max-age=0"));
-    server.sendHeader(F("Pragma"), F("no-cache"));
-    server.sendHeader(F("Expires"), F("0"));
-    server.send_P(200, "text/html", PAGE_MAIN);
+    server.sendHeader(F("Content-Encoding"), F("gzip"));
+    server.sendHeader(F("Cache-Control"), F("no-store"));
+    server.send_P(200, "text/html", (PGM_P)PAGE_MAIN_GZ, PAGE_MAIN_GZ_LEN);
 }
 
 void App::handleOtaUpload() {
@@ -708,6 +735,7 @@ void App::registerRoutes() {
 }
 
 void App::loop() {
+    CpuLoad::poll();
     server.handleClient();
     ble.loop();
 #if HR_RELAY

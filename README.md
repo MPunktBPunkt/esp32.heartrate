@@ -1,6 +1,6 @@
 # esp32.heartrate
 
-![Version](https://img.shields.io/badge/version-0.3.1-blue)
+![Version](https://img.shields.io/badge/version-0.3.3-blue)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Build](https://github.com/MPunktBPunkt/esp32.heartrate/actions/workflows/build.yml/badge.svg)](https://github.com/MPunktBPunkt/esp32.heartrate/actions/workflows/build.yml)
 [![Donate](https://img.shields.io/badge/Donate-PayPal-00457C.svg?logo=paypal)](https://www.paypal.com/donate/?business=martin%40bchmnn.de&currency_code=EUR)
@@ -139,11 +139,14 @@ Im Hub: States `devices.<MAC>.lastSessionExport` / `lastSessionExportAt`.
 
 ## Build / CI
 
+Web-UI: `web/index.html` bearbeiten, dann `python3 tools/pack_ui.py` (läuft auch als PlatformIO pre-script → `include/UiPagesGz.h`, gzip-PROGMEM).
+
 GitHub Actions baut beide Envs (`heartrate`, `heartrate-s3`) und lädt `firmware.bin` als Artifact hoch.
 
 Lokal:
 
 ```bash
+python3 tools/pack_ui.py   # optional — PIO pre-script macht das automatisch
 pio run -e heartrate
 pio run -e heartrate-s3
 ```

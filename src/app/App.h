@@ -11,6 +11,8 @@
 #include "core/SessionArchive.h"
 #include "core/SessionSeries.h"
 #include "ble/BleCentral.h"
+#include "esphub/CpuLoad.h"
+#include "esphub/HardwareInfo.h"
 #if HR_RELAY
 #include "ble/HrServer.h"
 #endif
@@ -30,6 +32,7 @@ public:
     SessionStats session;
     SessionArchive archive;
     SessionSeries series;
+    HardwareInfo hwInfo;
     WebServer server{80};
     SessionSummary lastEnded_;
     bool haveLastEnded_ = false;
